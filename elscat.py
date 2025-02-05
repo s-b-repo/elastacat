@@ -3,7 +3,6 @@ import os
 import sys
 import subprocess
 import time
-import glob
 from getpass import getpass, getuser
 
 def run_command(cmd, check=True):
@@ -87,13 +86,26 @@ def install_kibana():
     run_command("systemctl start kibana")
     print("Kibana installed and started. (Access via http://your-server-ip:5601)")
 
+def ensure_required_python():
+    # Check for python3.8 as required by Tracecat
+    result = subprocess.run("which python3.8", shell=True, text=True, stdout=subprocess.PIPE)
+    if result.returncode != 0:
+        print("python3.8 not found. Installing python3.8 and related packages...")
+        run_command("apt-get update -qq")
+        run_command("apt-get install -y python3.8 python3.8-venv python3.8-dev")
+    else:
+        print("python3.8 is available.")
+
 def install_tracecat_from_github(elastic_password):
     print("\nInstalling Tracecat from GitHub...")
     # Create system user for Tracecat
     run_command("useradd -r -s /usr/sbin/nologin tracecat")
     
-    # Install Python tools
-    run_command("apt-get install -y git python3-pip python3-venv")
+    # Install required tools
+    run_command("apt-get install -y git python3-pip")
+    
+    # Ensure the required python version is installed
+    ensure_required_python()
     
     # Clone the Tracecat repository from GitHub
     tracecat_dir = "/opt/tracecat"
@@ -105,11 +117,11 @@ def install_tracecat_from_github(elastic_password):
     
     run_command(f"chown -R tracecat:tracecat {tracecat_dir}")
     
-    # Create and activate a virtual environment in the repository
+    # Create and activate a virtual environment using python3.8
     venv_dir = f"{tracecat_dir}/venv"
-    run_command(f"python3 -m venv {venv_dir}", check=False)
+    run_command(f"python3.8 -m venv {venv_dir}", check=False)
     
-    # Install Tracecat in editable mode from the cloned repository
+    # Upgrade pip and install Tracecat in editable mode from the cloned repository
     run_command(f"{venv_dir}/bin/pip install --upgrade pip")
     run_command(f"{venv_dir}/bin/pip install -e {tracecat_dir}")
     
@@ -169,7 +181,7 @@ def main():
     print("Elasticsearch is running on port 9200 with security enabled.")
     print("Kibana (with Elastic SIEM) is running on port 5601.")
     print("Tracecat (installed from GitHub) is running and configured to use Elasticsearch.")
-    print("Please verify passwords and configuration via Kibana and adjust as needed.")
+    print("Please verify passwords and configuration via Kibana and adjust settings as needed.")
 
 if __name__ == "__main__":
     main()
