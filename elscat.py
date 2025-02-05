@@ -3,6 +3,7 @@ import os
 import sys
 import subprocess
 import time
+import pwd
 from getpass import getpass, getuser
 
 def run_command(cmd, check=True):
@@ -96,15 +97,22 @@ def ensure_required_python():
     else:
         print("python3.8 is available.")
 
+def ensure_tracecat_user():
+    try:
+        pwd.getpwnam("tracecat")
+        print("User 'tracecat' already exists, skipping user creation.")
+    except KeyError:
+        run_command("useradd -r -s /usr/sbin/nologin tracecat")
+
 def install_tracecat_from_github(elastic_password):
     print("\nInstalling Tracecat from GitHub...")
-    # Create system user for Tracecat
-    run_command("useradd -r -s /usr/sbin/nologin tracecat")
+    # Ensure the 'tracecat' system user exists
+    ensure_tracecat_user()
     
     # Install required tools
     run_command("apt-get install -y git python3-pip")
     
-    # Ensure the required python version is installed
+    # Ensure required python version is installed
     ensure_required_python()
     
     # Clone the Tracecat repository from GitHub
